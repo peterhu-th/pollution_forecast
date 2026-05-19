@@ -1,0 +1,10 @@
+# data
+*.nc
+*.xslx
+*.csv
+
+# results
+figures/
+
+architecture.md
+method.md
