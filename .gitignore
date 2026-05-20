@@ -1,10 +1,37 @@
 # data
+data/raw
+data/processed
+
+.zip
 *.nc
 *.xlsx
 *.csv
 
 # results
-figures/
+results/*
 
+*.pth
+*.pt
+
+# cache
+__pycache__/
+*.py[cod]
+*$py.class
+.env
+.pytest_cache/
+
+# envs
+venv/
+env/
+.conda/
+.venv/
+
+# IDE
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# build
 architecture.md
 method.md

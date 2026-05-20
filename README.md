@@ -12,7 +12,7 @@
 
 ## 2. Requirements
 
-复现本仓库的实验需配备以下 Python 配置（建议采用 Python 3.10+）：
+复现本仓库的实验需配备以下 Python 配置（Python 3.12）：
 
 ```text
 torch>=2.0.0
