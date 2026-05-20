@@ -1,11 +1,5 @@
-# -*- coding: utf-8 -*-
-"""
-全局配置文件 (Global Configuration)
-集中管理数据路径、模型超参数及训练策略。
-遵守学术界代码规范。
-"""
-
 import os
+import torch
 
 class Config:
     # 路径配置
@@ -21,22 +15,32 @@ class Config:
     SCALER_PATH = os.path.join(MODEL_DIR, 'data_scaler.pkl')
     BEST_MODEL_PATH = os.path.join(MODEL_DIR, 'best_forecaster.pth')
 
-    # 数据集和滑动窗口配置
-    SEQ_LENGTH = 24       # 输入的历史时间步长 (例如：使用过去24小时数据)
-    PRED_HORIZON = 12     # 预测未来的时间步长 (例如：预测未来12小时数据)
+    # 特征与维度配置
+    FEATURE_NAMES = [
+        'PM2.5', 'PM10', 'O3', 'NO2', 'SO2', 'CO', 
+        'temperature', 'humidity', 'Wind_Speed(m/s)', 
+        'Wind_U(m/s)', 'Wind_V(m/s)', 'PBL_Height(m)', 
+        'Precipitation(m)', 'Solar_Radiation(J/m2)'
+    ]
+    
     TARGET_FEATURES = ['PM2.5', 'PM10', 'O3', 'NO2', 'SO2', 'CO']
-    NUM_TARGETS = len(TARGET_FEATURES)
-    NUM_FEATURES = 8      # 假设输入特征总数为8 (6个目标污染物 + 温度 + 湿度)，需要根据实际合并后的数据列数调整
 
     # 模型架构超参数
-    HIDDEN_DIM = 64       # LSTM 隐藏层维度
-    NUM_LAYERS = 2        # LSTM 层数
-    DROPOUT_RATE = 0.2    # Dropout 概率
+    NUM_FEATURES = len(FEATURE_NAMES)
+    NUM_TARGETS = len(TARGET_FEATURES)
+
+    SEQ_LENGTH = 48
+    PRED_HORIZON = 24
+
+    HIDDEN_DIM = 128
+    NUM_LAYERS = 3
+    DROPOUT_RATE = 0.2
 
     # 训练配置
-    BATCH_SIZE = 32
+    BATCH_SIZE = 64
     LEARNING_RATE = 1e-3
     WEIGHT_DECAY = 1e-4
     EPOCHS = 100
-    PATIENCE = 10         # Early stopping 耐心值
-    DEVICE = 'cuda'       # 或 'cpu'
+    PATIENCE = 10
+    
+    DEVICE = 'cuda'

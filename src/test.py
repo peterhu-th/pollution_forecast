@@ -1,8 +1,7 @@
 # -*- coding: utf-8 -*-
 """
 模型测试与解释模块 (Model Testing and Interpretation)
-在测试集上评估模型，输出 RMSE、MAE 等指标，并提取 Attention 权重生成热力图。
-遵守学术界规范与代码架构要求。
+在测试集上评估模型，输出 RMSE、MAE 等指标，并提取 Attention 权重生成热力图
 """
 
 import os
@@ -10,16 +9,13 @@ import torch
 import numpy as np
 import pandas as pd
 import joblib
-# 假设有matplotlib等，如果未安装则可能会在画图时报错，提示用户安装
-try:
-    import matplotlib.pyplot as plt
-    import seaborn as sns
-except ImportError:
-    pass
+import matplotlib.pyplot as plt
+import seaborn as sns
 
-from .config import Config
-from .dataset_builder import build_dataloader
-from .model import SpatioTemporalForecaster
+from config import Config
+from dataset_builder import build_dataloader
+from model import SpatioTemporalForecaster
+
 
 def calculate_metrics(y_true, y_pred):
     """计算 RMSE 和 MAE"""
@@ -63,10 +59,7 @@ def evaluate_model():
         print("[!] Warning: Best model weights not found. Using untrained weights.")
     
     model.eval()
-    
-    all_preds = []
-    all_trues = []
-    all_attentions = []
+    all_preds, all_trues, all_feat_attns = [], [], []
     
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
@@ -84,22 +77,25 @@ def evaluate_model():
     all_attentions = np.concatenate(all_attentions, axis=0)
     
     # 4. 反归一化 (Inverse Transform)
-    # 注意: 模型预测形状为 (Samples, Horizon, Num_Targets)
-    # 为了使用 Scaler反归一化，需要将其扩展到特征数维度
+    # 模型预测形状为 (Samples, Horizon, Num_Targets)
     samples, horizon, targets = all_preds.shape
-    
     preds_flat = all_preds.reshape(-1, targets)
     trues_flat = all_trues.reshape(-1, targets)
     
-    # 创建一个空的满特征数组来填充目标预测值
     dummy_preds = np.zeros((preds_flat.shape[0], Config.NUM_FEATURES))
     dummy_trues = np.zeros((trues_flat.shape[0], Config.NUM_FEATURES))
     
-    dummy_preds[:, :targets] = preds_flat
-    dummy_trues[:, :targets] = trues_flat
+    # 假设目标污染物在 CSV 中是紧跟 datetime 的前 6 列
+    # 我们将预测值精确放入它们在 StandardScaler 拟合时对应的列位置
+    target_indices = list(range(Config.NUM_TARGETS)) 
     
-    preds_inv = scaler.inverse_transform(dummy_preds)[:, :targets]
-    trues_inv = scaler.inverse_transform(dummy_trues)[:, :targets]
+    for i, target_idx in enumerate(target_indices):
+        dummy_preds[:, target_idx] = preds_flat[:, i]
+        dummy_trues[:, target_idx] = trues_flat[:, i]
+    
+    # 反归一化后切片提取出目标列
+    preds_inv = scaler.inverse_transform(dummy_preds)[:, target_indices]
+    trues_inv = scaler.inverse_transform(dummy_trues)[:, target_indices]
     
     # 5. 计算指标
     rmse, mae = calculate_metrics(trues_inv, preds_inv)
@@ -112,8 +108,8 @@ def evaluate_model():
     
     # 提取某个样本的时间注意力权重进行热力图可视化 (如第一个样本)
     try:
-        sample_attention = all_attentions[0].reshape(-1) # (Seq_Length,)
-        plt.figure(figsize=(10, 2))
+        sample_attention = all_attentions[0].reshape(-1) # (NUM_FEATURES,)
+        plt.figure(figsize=(12, 4))
         sns.heatmap([sample_attention], cmap="YlGnBu", cbar=True, xticklabels=range(1, Config.SEQ_LENGTH+1))
         plt.title("Temporal Attention Weights for Sequence Context")
         plt.xlabel("Past Hours")
@@ -123,6 +119,22 @@ def evaluate_model():
         print(f"\n[*] Attention heatmap saved to: {heatmap_path}")
     except Exception as e:
         print(f"\n[!] Visualization skipped or failed: {e}")
+
+    try:
+        mean_feat_attn = np.mean(all_feat_attns, axis=0) # (NUM_FEATURES,)
+        
+        plt.figure(figsize=(12, 4))
+        # 需要在 Config 中定义所有 14 个特征的名字列表 (FEATURE_NAMES)
+        # 若未定义，可暂时用数字代替或从 DataFrame 获取
+        sns.barplot(x=list(range(Config.NUM_FEATURES)), y=mean_feat_attn, palette="viridis")
+        plt.title("Temporal Attention Weights for Sequence Context")
+        plt.xlabel("Feature index")
+        plt.ylabel("Attention Weight")
+        plt.grid(axis='y', linestyle='--', alpha=0.7)
+        plt.savefig(os.path.join(Config.FIGURE_DIR, 'q2_feature_attention.png'), bbox_inches='tight')
+        print("Feature co-weight graph saved")
+    except Exception as e:
+        print(f"Failed: {e}")
 
 if __name__ == '__main__':
     evaluate_model()

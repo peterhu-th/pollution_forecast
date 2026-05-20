@@ -1,16 +1,16 @@
 # -*- coding: utf-8 -*-
 """
 模型训练引擎 (Model Training Engine)
-实现基于 AdamW 优化器和 Huber Loss 的训练循环，并包含 Early Stopping 防止过拟合。
+实现基于 AdamW 优化器和 Huber Loss 的训练循环，已适配双重注意力机制模型。
 """
 
 import os
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader
-from .config import Config
-from .dataset_builder import build_dataloader
-from .model import SpatioTemporalForecaster
+from config import Config
+from dataset_builder import build_dataloader
+from model import SpatioTemporalForecaster
 
 class EarlyStopping:
     """早停机制 (Early Stopping Mechanism)"""
@@ -43,11 +43,12 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.path)
         self.val_loss_min = val_loss
 
+
 def train_model():
     """
     模型训练主程序 (Training Main Loop)。
     """
-    device = torch.device(Config.DEVICE if torch.cuda.is_available() else 'cpu')
+    device = torch.device(Config.DEVICE)
     print(f"[*] Training on device: {device}")
     
     # 1. 准备数据加载器
@@ -79,7 +80,7 @@ def train_model():
     ).to(device)
     
     # 3. 定义损失函数与优化器
-    criterion = nn.HuberLoss() # 对极端污染值鲁棒
+    criterion = nn.HuberLoss() 
     optimizer = torch.optim.AdamW(model.parameters(), lr=Config.LEARNING_RATE, weight_decay=Config.WEIGHT_DECAY)
     
     early_stopping = EarlyStopping(patience=Config.PATIENCE, path=Config.BEST_MODEL_PATH)
@@ -96,7 +97,9 @@ def train_model():
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             
             optimizer.zero_grad()
-            predictions, _ = model(batch_x)
+            
+            # 修改点 1：适配新的模型返回值，解包忽略时间与特征注意力权重
+            predictions, _, _ = model(batch_x)
             
             loss = criterion(predictions, batch_y)
             loss.backward()
@@ -116,7 +119,10 @@ def train_model():
         with torch.no_grad():
             for batch_x, batch_y in val_loader:
                 batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-                predictions, _ = model(batch_x)
+                
+                # 修改点 2：验证集前向传播同步修改解包逻辑
+                predictions, _, _ = model(batch_x)
+                
                 loss = criterion(predictions, batch_y)
                 val_loss += loss.item() * batch_x.size(0)
                 
@@ -133,6 +139,7 @@ def train_model():
             
     print(f"[*] Training completed. Best model saved to: {Config.BEST_MODEL_PATH}")
     return train_losses, val_losses
+
 
 if __name__ == '__main__':
     train_model()
