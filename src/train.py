@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-模型训练引擎 (Model Training Engine)
-实现基于 AdamW 优化器和 Huber Loss 的训练循环，已适配双重注意力机制模型。
-"""
-
 import os
 import torch
 import torch.nn as nn
@@ -45,13 +39,8 @@ class EarlyStopping:
 
 
 def train_model():
-    """
-    模型训练主程序 (Training Main Loop)。
-    """
     device = torch.device(Config.DEVICE)
-    print(f"[*] Training on device: {device}")
-    
-    # 1. 准备数据加载器
+    # 数据加载器
     train_loader, scaler = build_dataloader(
         file_path=Config.TRAIN_DATA_PATH,
         seq_length=Config.SEQ_LENGTH,
@@ -69,7 +58,7 @@ def train_model():
         scaler=scaler
     )
     
-    # 2. 实例化模型
+    # 实例化模型
     model = SpatioTemporalForecaster(
         input_dim=Config.NUM_FEATURES,
         hidden_dim=Config.HIDDEN_DIM,
@@ -79,7 +68,7 @@ def train_model():
         dropout_rate=Config.DROPOUT_RATE
     ).to(device)
     
-    # 3. 定义损失函数与优化器
+    # 定义损失函数与优化器
     criterion = nn.HuberLoss() 
     optimizer = torch.optim.AdamW(model.parameters(), lr=Config.LEARNING_RATE, weight_decay=Config.WEIGHT_DECAY)
     
@@ -88,7 +77,7 @@ def train_model():
     train_losses = []
     val_losses = []
     
-    # 4. 训练循环
+    # 训练循环
     for epoch in range(Config.EPOCHS):
         model.train()
         train_loss = 0.0
@@ -97,14 +86,11 @@ def train_model():
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             
             optimizer.zero_grad()
-            
-            # 修改点 1：适配新的模型返回值，解包忽略时间与特征注意力权重
             predictions, _, _ = model(batch_x)
             
             loss = criterion(predictions, batch_y)
             loss.backward()
             
-            # 梯度裁剪防止梯度爆炸
             torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
             
             optimizer.step()
@@ -113,14 +99,12 @@ def train_model():
         train_loss /= len(train_loader.dataset)
         train_losses.append(train_loss)
         
-        # 验证循环
+        # 验证
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
             for batch_x, batch_y in val_loader:
                 batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-                
-                # 修改点 2：验证集前向传播同步修改解包逻辑
                 predictions, _, _ = model(batch_x)
                 
                 loss = criterion(predictions, batch_y)
@@ -128,16 +112,14 @@ def train_model():
                 
         val_loss /= len(val_loader.dataset)
         val_losses.append(val_loss)
+        if ((epoch+1) % 5==0):
+            print(f"Epoch [{epoch+1}/{Config.EPOCHS}] | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
         
-        print(f"Epoch [{epoch+1}/{Config.EPOCHS}] | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
-        
-        # Early Stopping 检查
         early_stopping(val_loss, model)
         if early_stopping.early_stop:
-            print("[!] Early stopping triggered.")
+            print(f"Early Stopping at epoch [{epoch+1}/{Config.EPOCHS}] | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
             break
             
-    print(f"[*] Training completed. Best model saved to: {Config.BEST_MODEL_PATH}")
     return train_losses, val_losses
 
 

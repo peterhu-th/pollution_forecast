@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-模型架构定义模块 (Model Architecture Definitions)
-包含基于特征注意力和时序注意力的 LSTM 网络，用于多变量多步预测。
-"""
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -143,7 +137,7 @@ if __name__ == '__main__':
     
     # 创建随机输入张量 (Batch, Seq, Features)
     dummy_input = torch.randn(BATCH_SIZE, SEQ_LENGTH, INPUT_DIM)
-    print(f"[*] Input Data Shape: {dummy_input.shape}")
+    print(f"Input Data Shape: {dummy_input.shape}")
     
     # 初始化模型
     model = SpatioTemporalForecaster(
@@ -157,11 +151,11 @@ if __name__ == '__main__':
     # 前向传播
     predictions, temp_attn, feat_attn = model(dummy_input)
     
-    print(f"[*] Expected Output Shape: ({BATCH_SIZE}, {PRED_HORIZON}, {NUM_TARGETS})")
-    print(f"[*] Actual Output Shape:   {predictions.shape}")
+    print(f"Expected Output Shape: ({BATCH_SIZE}, {PRED_HORIZON}, {NUM_TARGETS})")
+    print(f"Actual Output Shape:   {predictions.shape}")
     
-    print(f"[*] Expected Temporal Attention Shape: ({BATCH_SIZE}, {SEQ_LENGTH}, 1)")
-    print(f"[*] Actual Temporal Attention Shape:   {temp_attn.shape}")
+    print(f"Expected Temporal Attention Shape: ({BATCH_SIZE}, {SEQ_LENGTH}, 1)")
+    print(f"Actual Temporal Attention Shape:   {temp_attn.shape}")
     
-    print(f"[*] Expected Feature Attention Shape: ({BATCH_SIZE}, {INPUT_DIM})")
-    print(f"[*] Actual Feature Attention Shape:   {feat_attn.shape}")
+    print(f"Expected Feature Attention Shape: ({BATCH_SIZE}, {INPUT_DIM})")
+    print(f"Actual Feature Attention Shape:   {feat_attn.shape}")

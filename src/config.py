@@ -37,10 +37,9 @@ class Config:
     DROPOUT_RATE = 0.2
 
     # 训练配置
-    BATCH_SIZE = 64
+    BATCH_SIZE = 256
     LEARNING_RATE = 1e-3
     WEIGHT_DECAY = 1e-4
-    EPOCHS = 100
+    EPOCHS = 50
     PATIENCE = 10
-    
     DEVICE = 'cuda'

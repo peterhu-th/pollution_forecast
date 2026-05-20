@@ -1,9 +1,3 @@
-# -*- coding: utf-8 -*-
-"""
-数据加载与预处理模块 (Data Loading and Preprocessing)
-实现时间序列数据的窗口切分、归一化以及 PyTorch Dataset 的构建。
-"""
-
 import os
 import torch
 import numpy as np
