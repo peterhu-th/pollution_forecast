@@ -65,11 +65,12 @@ def train_model():
         num_layers=Config.NUM_LAYERS,
         pred_horizon=Config.PRED_HORIZON,
         num_targets=Config.NUM_TARGETS,
+        seq_length=Config.SEQ_LENGTH,
         dropout_rate=Config.DROPOUT_RATE
     ).to(device)
     
     # 定义损失函数与优化器
-    criterion = nn.HuberLoss() 
+    criterion = nn.HuberLoss()
     optimizer = torch.optim.AdamW(model.parameters(), lr=Config.LEARNING_RATE, weight_decay=Config.WEIGHT_DECAY)
     
     early_stopping = EarlyStopping(patience=Config.PATIENCE, path=Config.BEST_MODEL_PATH)
@@ -86,7 +87,7 @@ def train_model():
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             
             optimizer.zero_grad()
-            predictions, _, _ = model(batch_x)
+            predictions = model(batch_x)
             
             loss = criterion(predictions, batch_y)
             loss.backward()
@@ -105,7 +106,7 @@ def train_model():
         with torch.no_grad():
             for batch_x, batch_y in val_loader:
                 batch_x, batch_y = batch_x.to(device), batch_y.to(device)
-                predictions, _, _ = model(batch_x)
+                predictions = model(batch_x)
                 
                 loss = criterion(predictions, batch_y)
                 val_loss += loss.item() * batch_x.size(0)
@@ -114,12 +115,12 @@ def train_model():
         val_losses.append(val_loss)
         if ((epoch+1) % 5==0):
             print(f"Epoch [{epoch+1}/{Config.EPOCHS}] | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
-        
+
         early_stopping(val_loss, model)
         if early_stopping.early_stop:
             print(f"Early Stopping at epoch [{epoch+1}/{Config.EPOCHS}] | Train Loss: {train_loss:.4f} | Val Loss: {val_loss:.4f}")
             break
-            
+
     return train_losses, val_losses
 
 

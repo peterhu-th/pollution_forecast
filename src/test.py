@@ -42,6 +42,7 @@ def evaluate_model():
         num_layers=Config.NUM_LAYERS,
         pred_horizon=Config.PRED_HORIZON,
         num_targets=Config.NUM_TARGETS,
+        seq_length=Config.SEQ_LENGTH,
         dropout_rate=0.0
     ).to(device)
     
@@ -51,20 +52,18 @@ def evaluate_model():
         print("Warning: Best model weights not found. Using untrained weights.")
     
     model.eval()
-    all_preds, all_trues, all_feat_attns = [], [], []
+    all_preds, all_trues = [], []
     
     with torch.no_grad():
         for batch_x, batch_y in test_loader:
             batch_x, batch_y = batch_x.to(device), batch_y.to(device)
             
-            predictions, temp_attn, feat_attn = model(batch_x)            
+            predictions = model(batch_x)            
             all_preds.append(predictions.cpu().numpy())
             all_trues.append(batch_y.cpu().numpy())
-            all_feat_attns.append(feat_attn.cpu().numpy())
 
     all_preds = np.concatenate(all_preds, axis=0)
     all_trues = np.concatenate(all_trues, axis=0)
-    all_feat_attns = np.concatenate(all_feat_attns, axis=0)
     
     # 反归一化 (Inverse Transform)
     # 预测形状 (Samples, Horizon, Num_Targets)
@@ -84,38 +83,42 @@ def evaluate_model():
     preds_inv = scaler.inverse_transform(dummy_preds)[:, target_indices]
     trues_inv = scaler.inverse_transform(dummy_trues)[:, target_indices]
     
+    preds_inv = preds_inv.reshape(samples, horizon, targets)
+    trues_inv = trues_inv.reshape(samples, horizon, targets)
+
     # 计算指标
-    rmse, mae = calculate_metrics(trues_inv, preds_inv)
+    rmse, mae = calculate_metrics(trues_inv.reshape(-1, targets), preds_inv.reshape(-1, targets))
     for i, feature in enumerate(Config.TARGET_FEATURES):
         print(f"[{feature}] RMSE: {rmse[i]:.2f}, MAE: {mae[i]:.2f}")
 
-    os.makedirs(Config.FIGURE_DIR, exist_ok=True)
-    
-    # 提取时间注意力权重可视化
-    sample_attention = all_feat_attns[0].reshape(-1) # (NUM_FEATURES,)
-    plt.figure(figsize=(12, 4))
-    sns.heatmap([sample_attention], cmap="YlGnBu", cbar=True, xticklabels=range(1, Config.SEQ_LENGTH+1))
-    plt.title("Temporal Attention Weights for Sequence Context")
-    plt.xlabel("Past Hours")
-    plt.yticks([])
-    heatmap_path = os.path.join(Config.FIGURE_DIR, 'attention_heatmap.png')
-    plt.savefig(heatmap_path, bbox_inches='tight')
+    os.makedirs(Config.FIGURE_DIR_EVAL, exist_ok=True)
 
-    try:
-        mean_feat_attn = np.mean(all_feat_attns, axis=0)
-        
-        plt.figure(figsize=(12, 4))
-        sns.barplot(
-            x=list(range(Config.NUM_FEATURES)), y=mean_feat_attn, hue=list(range(Config.NUM_FEATURES)),
-            palette="viridis", legend=False)
-        plt.title("Temporal Attention Weights for Sequence Context")
-        plt.xlabel("Feature index")
-        plt.ylabel("Attention Weight")
-        plt.grid(axis='y', linestyle='--', alpha=0.7)
-        plt.savefig(os.path.join(Config.FIGURE_DIR, 'feature_attention.png'), bbox_inches='tight')
-        print("Feature co-weight graph saved.")
-    except Exception as e:
-        print(f"Failed: {e}")
+    # Evaluation 1: 计算随预测步长变化的 RMSE/MAE
+    horizon_rmse = np.sqrt(np.mean((trues_inv - preds_inv)**2, axis=0)) # (Horizon, Targets)
+    
+    plt.figure(figsize=(10, 6))
+    for i, feature in enumerate(Config.TARGET_FEATURES):
+        plt.plot(range(1, horizon + 1), horizon_rmse[:, i], label=feature, marker='o', markersize=4)
+        print(f"[{feature}] 1h RMSE: {horizon_rmse[0, i]:.2f}, {horizon}h RMSE: {horizon_rmse[-1, i]:.2f}")
+    plt.xlabel('Future Time Steps (Hours)')
+    plt.ylabel('RMSE')
+    plt.title('Prediction Error Decay over Time Horizon')
+    plt.legend()
+    plt.grid(True)
+    plt.savefig(os.path.join(Config.FIGURE_DIR_EVAL, 'horizon_rmse_decay.png'), bbox_inches='tight')
+    
+    # Evaluation 2: 具体样本的时间序列折线图
+    sample_idx = np.random.randint(0, samples)
+    plt.figure(figsize=(15, 8))
+    for i, feature in enumerate(Config.TARGET_FEATURES):
+        plt.subplot(2, 3, i+1)
+        plt.plot(range(horizon), trues_inv[sample_idx, :, i], label='True', marker='.')
+        plt.plot(range(horizon), preds_inv[sample_idx, :, i], label='Pred', marker='x')
+        plt.title(f"{feature} Forecast")
+        plt.legend()
+    plt.tight_layout()
+    plt.savefig(os.path.join(Config.FIGURE_DIR_EVAL, 'sample_forecast_series.png'))
+    
 
 if __name__ == '__main__':
     evaluate_model()

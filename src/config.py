@@ -8,6 +8,8 @@ class Config:
     PROCESSED_DIR = os.path.join(DATA_DIR, 'processed')
     MODEL_DIR = os.path.join(BASE_DIR, 'results', 'models')
     FIGURE_DIR = os.path.join(BASE_DIR, 'results', 'figures')
+    FIGURE_DIR_ANALYSIS = os.path.join(FIGURE_DIR, 'analysis')
+    FIGURE_DIR_EVAL = os.path.join(FIGURE_DIR, 'evaluation')
     
     TRAIN_DATA_PATH = os.path.join(PROCESSED_DIR, 'train_set.csv')
     VAL_DATA_PATH = os.path.join(PROCESSED_DIR, 'val_set.csv')
@@ -29,17 +31,17 @@ class Config:
     NUM_FEATURES = len(FEATURE_NAMES)
     NUM_TARGETS = len(TARGET_FEATURES)
 
-    SEQ_LENGTH = 48
+    SEQ_LENGTH = 24
     PRED_HORIZON = 24
 
-    HIDDEN_DIM = 128
-    NUM_LAYERS = 3
+    HIDDEN_DIM = 256
+    NUM_LAYERS = 2
     DROPOUT_RATE = 0.2
 
     # 训练配置
-    BATCH_SIZE = 256
+    BATCH_SIZE = 16
     LEARNING_RATE = 1e-3
     WEIGHT_DECAY = 1e-4
-    EPOCHS = 50
+    EPOCHS = 100
     PATIENCE = 10
     DEVICE = 'cuda'
