@@ -14,6 +14,7 @@ class Config:
     TRAIN_DATA_PATH = os.path.join(PROCESSED_DIR, 'train_set.csv')
     VAL_DATA_PATH = os.path.join(PROCESSED_DIR, 'val_set.csv')
     TEST_DATA_PATH = os.path.join(PROCESSED_DIR, 'test_set.csv')
+    FULL_DATA_PATH = os.path.join(DATA_DIR, 'data_merged.csv')
     SCALER_PATH = os.path.join(MODEL_DIR, 'data_scaler.pkl')
     BEST_MODEL_PATH = os.path.join(MODEL_DIR, 'best_forecaster.pth')
 

@@ -9,6 +9,7 @@ data/processed
 
 # results
 results/*
+paper/*
 
 *.pkl
 *.pth
@@ -32,7 +33,3 @@ env/
 .idea/
 .DS_Store
 Thumbs.db
-
-# build
-architecture.md
-method.md
